@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鲜花商城 · 外卖员端</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "PingFang SC","Microsoft YaHei",sans-serif; background: #f6f7fb; color: #333; }
+  header { background: linear-gradient(135deg,#43e97b,#38f9d7); color: #fff; padding: 14px 24px;
+           display: flex; justify-content: space-between; align-items: center; }
+  header h1 { font-size: 20px; }
+  nav { display: flex; gap: 4px; background: #fff; padding: 0 24px; border-bottom: 1px solid #eee; }
+  nav button { border: none; background: none; padding: 12px 16px; cursor: pointer; color: #666; font-size: 15px; }
+  nav button.active { color: #13a96b; border-bottom: 3px solid #13a96b; font-weight: 600; }
+  main { max-width: 1000px; margin: 20px auto; padding: 0 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.05); margin-bottom: 16px; }
+  .hide { display: none !important; }
+  input, button { font: inherit; }
+  .btn { border: none; border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 14px; }
+  .btn-primary { background: #13a96b; color: #fff; }
+  .btn-ghost { background: #f1f2f6; color: #555; }
+  .btn-sm { padding: 4px 10px; font-size: 13px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  input[type=text], input[type=password] { border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; width: 100%; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 10px 8px; border-bottom: 1px solid #f0f0f0; text-align: left; font-size: 14px; }
+  th { color: #888; font-weight: 500; background: #fafafa; }
+  .login-box { max-width: 380px; margin: 60px auto; }
+  .login-box .card { padding: 30px; }
+  .login-box h2 { margin-bottom: 18px; text-align: center; }
+  .login-box .row { margin-bottom: 14px; }
+  .login-box input { width: 100%; }
+  .msg { color: #666; font-size: 13px; margin-top: 10px; }
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #333;
+    color: #fff; padding: 10px 20px; border-radius: 6px; z-index: 999; font-size: 14px; display: none; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+  .tag-green { background: #e6fffb; color: #08979c; }
+  .tag-orange { background: #fff7e6; color: #d46b08; }
+  .empty { text-align: center; color: #999; padding: 40px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🛵 鲜花商城 · 外卖员端</h1>
+  <div id="userBar"></div>
+</header>
+<nav id="navBar" class="hide">
+  <button class="active" data-tab="pool">可接单</button>
+  <button data-tab="mine">我的配送</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<div class="login-box" id="loginView">
+  <div class="card">
+    <h2>外卖员登录</h2>
+    <div class="row"><input id="lgUser" placeholder="用户名" type="text"></div>
+    <div class="row"><input id="lgPwd" placeholder="密码" type="password"></div>
+    <div class="row"><button class="btn btn-primary" style="width:100%" onclick="login()">登 录</button></div>
+    <div class="row"><button class="btn btn-ghost" style="width:100%" onclick="showReg()">注册外卖员</button></div>
+    <p class="msg">演示账号 courier01 / courier123</p>
+  </div>
+</div>
+<div class="login-box hide" id="regView">
+  <div class="card">
+    <h2>外卖员注册</h2>
+    <div class="row"><input id="rgUser" placeholder="用户名" type="text"></div>
+    <div class="row"><input id="rgPwd" placeholder="密码(≥8位含字母数字)" type="password"></div>
+    <div class="row"><input id="rgName" placeholder="姓名" type="text"></div>
+    <div class="row"><input id="rgPhone" placeholder="手机号(选填)" type="text"></div>
+    <div class="row"><button class="btn btn-primary" style="width:100%" onclick="doReg()">注 册</button></div>
+    <div class="row"><button class="btn btn-ghost" style="width:100%" onclick="showLogin()">返回登录</button></div>
+  </div>
+</div>
+
+<div id="mainView" class="hide">
+  <section id="tab-pool">
+    <div class="card">
+      <h3 style="margin-bottom:12px">📢 待接单（商家已发货）</h3>
+      <table>
+        <thead><tr><th>订单号</th><th>商品</th><th>金额</th><th>收货人</th><th>地址</th><th>操作</th></tr></thead>
+        <tbody id="poolBody"></tbody>
+      </table>
+    </div>
+  </section>
+  <section id="tab-mine" class="hide">
+    <div class="card">
+      <h3 style="margin-bottom:12px">🚚 我的配送单</h3>
+      <table>
+        <thead><tr><th>订单号</th><th>商品</th><th>金额</th><th>收货人</th><th>地址</th><th>状态</th><th>操作</th></tr></thead>
+        <tbody id="mineBody"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+const API = '../api/';
+let TOKEN = localStorage.getItem('ck_token') || '';
+let ME = null;
+
+function api(path, data = {}) {
+  const headers = {};
+  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  return fetch(API + path, { method: 'POST', headers, body: new URLSearchParams(data) }).then(r => r.json());
+}
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._timer); t._timer = setTimeout(() => t.style.display = 'none', 2200);
+}
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function showLogin() { document.getElementById('loginView').classList.remove('hide'); document.getElementById('regView').classList.add('hide'); }
+function showReg() { document.getElementById('loginView').classList.add('hide'); document.getElementById('regView').classList.remove('hide'); }
+async function login() {
+  const r = await api('courier_login.php', { username: document.getElementById('lgUser').value, password: document.getElementById('lgPwd').value });
+  if (r.code === 1) { TOKEN = r.token; localStorage.setItem('ck_token', TOKEN); ME = r.user; enterApp(); }
+  else toast(r.msg);
+}
+async function doReg() {
+  const r = await api('register_courier.php', { username: document.getElementById('rgUser').value,
+    password: document.getElementById('rgPwd').value, name: document.getElementById('rgName').value,
+    phone: document.getElementById('rgPhone').value });
+  if (r.code === 1) { toast('注册成功，请登录'); showLogin(); } else toast(r.msg);
+}
+function logout() {
+  api('logout.php').then(() => {});
+  localStorage.removeItem('ck_token'); TOKEN = ''; ME = null;
+  document.getElementById('mainView').classList.add('hide');
+  document.getElementById('navBar').classList.add('hide');
+  document.getElementById('loginView').classList.remove('hide');
+}
+function enterApp() {
+  document.getElementById('loginView').classList.add('hide');
+  document.getElementById('regView').classList.add('hide');
+  document.getElementById('navBar').classList.remove('hide');
+  document.getElementById('mainView').classList.remove('hide');
+  document.getElementById('userBar').innerHTML = '🛵 ' + esc(ME.name) + ' <button class="btn btn-sm" style="margin-left:10px;background:rgba(255,255,255,.25)" onclick="logout()">退出</button>';
+  switchTab('pool');
+}
+function switchTab(tab) {
+  document.querySelectorAll('#navBar button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('tab-pool').classList.toggle('hide', tab !== 'pool');
+  document.getElementById('tab-mine').classList.toggle('hide', tab !== 'mine');
+  if (tab === 'pool') loadPool();
+  if (tab === 'mine') loadMine();
+}
+
+async function loadPool() {
+  const r = await api('get_courier_orders.php', { scope: 'pool', page: 1, size: 50 });
+  if (r.code !== 1) return toast(r.msg);
+  document.getElementById('poolBody').innerHTML = r.list.length ? r.list.map(o => `
+    <tr>
+      <td>${esc(o.order_no)}</td><td>${esc(o.goods_text)}</td><td>¥${o.total_price}</td>
+      <td>${esc(o.rece_name)} ${esc(o.rece_phone)}</td><td style="font-size:12px">${esc(o.rece_addr)}</td>
+      <td><button class="btn btn-primary btn-sm" onclick="takeOrder(${o.id})">接单</button></td>
+    </tr>`).join('') : '<tr><td colspan="6" class="empty">暂无待接订单，稍后再来看看</td></tr>';
+}
+async function takeOrder(oid) {
+  const r = await api('courier_take_order.php', { order_id: oid });
+  toast(r.msg); loadPool(); loadMine();
+}
+async function loadMine() {
+  const r = await api('get_courier_orders.php', { scope: 'mine', page: 1, size: 50 });
+  if (r.code !== 1) return toast(r.msg);
+  document.getElementById('mineBody').innerHTML = r.list.length ? r.list.map(o => `
+    <tr>
+      <td>${esc(o.order_no)}</td><td>${esc(o.goods_text)}</td><td>¥${o.total_price}</td>
+      <td>${esc(o.rece_name)} ${esc(o.rece_phone)}</td><td style="font-size:12px">${esc(o.rece_addr)}</td>
+      <td><span class="tag ${o.status === '配送中' ? 'tag-orange' : 'tag-green'}">${o.status}</span></td>
+      <td>${o.status === '配送中' ? `<button class="btn btn-primary btn-sm" onclick="deliver(${o.id})">确认送达</button>` : ''}</td>
+    </tr>`).join('') : '<tr><td colspan="7" class="empty">暂无配送单</td></tr>';
+}
+async function deliver(oid) {
+  const r = await api('courier_update_status.php', { order_id: oid });
+  toast(r.msg); loadMine();
+}
+</script>
+
+<!-- 导航栏点击绑定（修复：navBar 按钮原本没有绑定 switchTab） -->
+<script>
+(function () {
+  function bind() {
+    document.querySelectorAll('#navBar button').forEach(function (b) {
+      if (b.dataset.bound) return;
+      b.dataset.bound = '1';
+      b.addEventListener('click', function () { if (window.switchTab) switchTab(b.dataset.tab); });
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+</script>
+</body>
+</html>
