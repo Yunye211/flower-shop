@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: flower-shop-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/get_products.php
+    envVars:
+      - key: DB_HOST
+        value: aws-0-ap-southeast-1.pooler.supabase.com
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_NAME
+        value: postgres
+      - key: DB_USER
+        value: postgres.wbidqcqsjfrpatrxkvtk
+      - key: DB_SSL
+        value: require
+      - key: DB_PASS
+        sync: false
