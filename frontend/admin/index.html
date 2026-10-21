@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鲜花商城 · 管理端</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "PingFang SC","Microsoft YaHei",sans-serif; background: #f0f2f5; color: #333; }
+  header { background: #001529; color: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+  header h1 { font-size: 20px; }
+  nav { display: flex; gap: 4px; background: #fff; padding: 0 24px; border-bottom: 1px solid #eee; }
+  nav button { border: none; background: none; padding: 12px 16px; cursor: pointer; color: #666; font-size: 15px; }
+  nav button.active { color: #1677ff; border-bottom: 3px solid #1677ff; font-weight: 600; }
+  main { max-width: 1200px; margin: 20px auto; padding: 0 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.05); margin-bottom: 16px; }
+  .hide { display: none !important; }
+  input, select, button { font: inherit; }
+  .btn { border: none; border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 14px; }
+  .btn-primary { background: #1677ff; color: #fff; }
+  .btn-ghost { background: #f1f2f6; color: #555; }
+  .btn-sm { padding: 4px 10px; font-size: 13px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  input[type=text], input[type=password], select { border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 10px 8px; border-bottom: 1px solid #f0f0f0; text-align: left; font-size: 14px; }
+  th { color: #888; font-weight: 500; background: #fafafa; }
+  .login-box { max-width: 380px; margin: 60px auto; }
+  .login-box .card { padding: 30px; }
+  .login-box h2 { margin-bottom: 18px; text-align: center; }
+  .login-box .row { margin-bottom: 14px; }
+  .login-box input { width: 100%; }
+  .msg { color: #666; font-size: 13px; margin-top: 10px; }
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #333;
+    color: #fff; padding: 10px 20px; border-radius: 6px; z-index: 999; font-size: 14px; display: none; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+  .tag-green { background: #e6fffb; color: #08979c; }
+  .tag-orange { background: #fff7e6; color: #d46b08; }
+  .tag-red { background: #fff1f0; color: #cf1322; }
+  .tag-gray { background: #f0f0f0; color: #666; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 14px; }
+  .stat { background: #fff; border-radius: 10px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+  .stat b { font-size: 26px; color: #1677ff; display: block; margin: 6px 0; }
+  .stat span { color: #888; font-size: 13px; }
+  .empty { text-align: center; color: #999; padding: 40px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🛡️ 鲜花商城 · 管理端</h1>
+  <div id="userBar"></div>
+</header>
+<nav id="navBar" class="hide">
+  <button class="active" data-tab="stats">平台概览</button>
+  <button data-tab="orders">全部订单</button>
+  <button data-tab="users">用户管理</button>
+  <button data-tab="audit">审计日志</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<div class="login-box" id="loginView">
+  <div class="card">
+    <h2>管理员登录</h2>
+    <div class="row"><input id="lgUser" placeholder="管理员账号" type="text"></div>
+    <div class="row"><input id="lgPwd" placeholder="密码" type="password"></div>
+    <div class="row"><button class="btn btn-primary" style="width:100%" onclick="login()">登 录</button></div>
+    <p class="msg">默认账号 admin / admin123（seed.php 初始化）</p>
+  </div>
+</div>
+
+<div id="mainView" class="hide">
+  <section id="tab-stats">
+    <div class="card">
+      <h3 style="margin-bottom:14px">📊 平台统计</h3>
+      <div class="stat-grid" id="statGrid"></div>
+    </div>
+  </section>
+
+  <section id="tab-orders" class="hide">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:12px">
+        <h3>📋 全部订单</h3>
+        <div class="row">
+          <input id="kwOrder" placeholder="订单号搜索">
+          <select id="orderFilter" onchange="loadOrders()">
+            <option value="">全部状态</option>
+            <option>待发货</option><option>已发货</option><option>配送中</option><option>已送达</option><option>已取消</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="loadOrders()">查询</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>订单号</th><th>买家</th><th>商品</th><th>金额</th><th>支付</th><th>状态</th><th>配送员</th><th>时间</th></tr></thead>
+        <tbody id="orderBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tab-users" class="hide">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:12px">
+        <h3>👥 用户管理</h3>
+        <div class="row">
+          <select id="roleFilter" onchange="loadUsers()">
+            <option value="user">普通用户</option>
+            <option value="merchant">商家</option>
+            <option value="courier">外卖员</option>
+          </select>
+          <input id="kwUser" placeholder="用户名搜索">
+          <button class="btn btn-primary btn-sm" onclick="loadUsers()">查询</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>ID</th><th>用户名</th><th>手机号</th><th>状态</th><th>注册时间</th></tr></thead>
+        <tbody id="userBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tab-audit" class="hide">
+    <div class="card">
+      <h3 style="margin-bottom:12px">🔎 操作审计日志</h3>
+      <table>
+        <thead><tr><th>ID</th><th>角色</th><th>用户ID</th><th>操作</th><th>详情</th><th>IP</th><th>时间</th></tr></thead>
+        <tbody id="auditBody"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+const API = '../api/';
+let TOKEN = localStorage.getItem('ak_token') || '';
+let ME = null;
+
+function api(path, data = {}) {
+  const headers = {};
+  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  return fetch(API + path, { method: 'POST', headers, body: new URLSearchParams(data) }).then(r => r.json());
+}
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._timer); t._timer = setTimeout(() => t.style.display = 'none', 2200);
+}
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function login() {
+  const r = await api('admin_login.php', { username: document.getElementById('lgUser').value, password: document.getElementById('lgPwd').value });
+  if (r.code === 1) { TOKEN = r.token; localStorage.setItem('ak_token', TOKEN); ME = r.user; enterApp(); }
+  else toast(r.msg);
+}
+function logout() {
+  api('logout.php').then(() => {});
+  localStorage.removeItem('ak_token'); TOKEN = ''; ME = null;
+  document.getElementById('mainView').classList.add('hide');
+  document.getElementById('navBar').classList.add('hide');
+  document.getElementById('loginView').classList.remove('hide');
+}
+function enterApp() {
+  document.getElementById('loginView').classList.add('hide');
+  document.getElementById('navBar').classList.remove('hide');
+  document.getElementById('mainView').classList.remove('hide');
+  document.getElementById('userBar').innerHTML = '👤 ' + esc(ME.name || ME.username) + ' <button class="btn btn-sm" style="margin-left:10px;background:rgba(255,255,255,.25)" onclick="logout()">退出</button>';
+  switchTab('stats');
+}
+function switchTab(tab) {
+  document.querySelectorAll('#navBar button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  ['stats','orders','users','audit'].forEach(t => document.getElementById('tab-' + t).classList.toggle('hide', t !== tab));
+  if (tab === 'stats') loadStats();
+  if (tab === 'orders') loadOrders();
+  if (tab === 'users') loadUsers();
+  if (tab === 'audit') loadAudit();
+}
+
+async function loadStats() {
+  const r = await api('admin_stats.php');
+  if (r.code !== 1) return toast(r.msg);
+  const s = r.stats;
+  document.getElementById('statGrid').innerHTML = [
+    ['👤 用户数', s.user_count], ['🏪 商家数', s.merchant_count], ['🛵 外卖员数', s.courier_count],
+    ['💐 商品数', s.product_count], ['📋 订单总数', s.order_count], ['💳 已支付订单', s.paid_order_count],
+    ['✅ 已送达', s.delivered_count], ['💰 平台营收(元)', s.total_revenue.toFixed(2)],
+  ].map(x => `<div class="stat"><span>${x[0]}</span><b>${x[1]}</b></div>`).join('');
+}
+
+async function loadOrders() {
+  const r = await api('admin_orders.php', { page: 1, size: 50, status: document.getElementById('orderFilter').value,
+    keyword: document.getElementById('kwOrder').value });
+  if (r.code !== 1) return toast(r.msg);
+  const stTag = { '待发货':'tag-orange', '已发货':'tag-orange', '配送中':'tag-green', '已送达':'tag-green', '已取消':'tag-gray' };
+  document.getElementById('orderBody').innerHTML = r.list.length ? r.list.map(o => `
+    <tr>
+      <td>${esc(o.order_no)}</td><td>${esc(o.buyer)}</td><td>${esc(o.goods_text)}</td><td>¥${o.total_price}</td>
+      <td>${o.pay_status === '已支付' ? '<span class="tag tag-green">已支付</span>' : '<span class="tag tag-red">未支付</span>'}</td>
+      <td><span class="tag ${stTag[o.status] || 'tag-gray'}">${o.status}</span></td>
+      <td>${esc(o.courier_name || '—')}</td><td style="font-size:12px;color:#999">${esc(o.created_at)}</td>
+    </tr>`).join('') : '<tr><td colspan="8" class="empty">暂无订单</td></tr>';
+}
+
+async function loadUsers() {
+  const r = await api('admin_users.php', { role: document.getElementById('roleFilter').value, page: 1, size: 100,
+    keyword: document.getElementById('kwUser').value });
+  if (r.code !== 1) return toast(r.msg);
+  document.getElementById('userBody').innerHTML = r.list.length ? r.list.map(u => `
+    <tr>
+      <td>${u.id}</td><td>${esc(u.username)}</td><td>${esc(u.phone || '—')}</td>
+      <td>${u.status === 1 ? '<span class="tag tag-green">正常</span>' : '<span class="tag tag-red">禁用</span>'}</td>
+      <td style="font-size:12px;color:#999">${esc(u.created_at)}</td>
+    </tr>`).join('') : '<tr><td colspan="5" class="empty">暂无用户</td></tr>';
+}
+
+async function loadAudit() {
+  const r = await api('admin_audit.php', { page: 1, size: 50 });
+  if (r.code !== 1) return toast(r.msg);
+  const roleMap = { user:'用户', merchant:'商家', courier:'外卖员', admin:'管理员' };
+  document.getElementById('auditBody').innerHTML = r.list.length ? r.list.map(l => `
+    <tr>
+      <td>${l.id}</td><td>${esc(roleMap[l.user_type] || l.user_type)}</td><td>${esc(l.user_id || '—')}</td>
+      <td>${esc(l.action)}</td><td style="font-size:12px">${esc(l.detail || '—')}</td>
+      <td>${esc(l.ip || '—')}</td><td style="font-size:12px;color:#999">${esc(l.created_at)}</td>
+    </tr>`).join('') : '<tr><td colspan="7" class="empty">暂无日志</td></tr>';
+}
+</script>
+
+<!-- 导航栏点击绑定（修复：navBar 按钮原本没有绑定 switchTab） -->
+<script>
+(function () {
+  function bind() {
+    document.querySelectorAll('#navBar button').forEach(function (b) {
+      if (b.dataset.bound) return;
+      b.dataset.bound = '1';
+      b.addEventListener('click', function () { if (window.switchTab) switchTab(b.dataset.tab); });
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+</script>
+</body>
+</html>
