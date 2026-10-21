@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鲜花商城 · 用户端</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "PingFang SC","Microsoft YaHei",sans-serif; background: #f6f7fb; color: #333; }
+  header { background: linear-gradient(135deg,#ff6f91,#ff9671); color: #fff; padding: 14px 24px;
+           display: flex; justify-content: space-between; align-items: center; }
+  header h1 { font-size: 20px; }
+  header .user { font-size: 14px; opacity: .95; }
+  nav { display: flex; gap: 4px; background: #fff; padding: 0 24px; border-bottom: 1px solid #eee; }
+  nav button { border: none; background: none; padding: 12px 16px; cursor: pointer; color: #666; font-size: 15px; }
+  nav button.active { color: #ff6f91; border-bottom: 3px solid #ff6f91; font-weight: 600; }
+  main { max-width: 1100px; margin: 20px auto; padding: 0 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.05); margin-bottom: 16px; }
+  .hide { display: none !important; }
+  input, textarea, select, button { font: inherit; }
+  .btn { border: none; border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 14px; }
+  .btn-primary { background: #ff6f91; color: #fff; }
+  .btn-ghost { background: #f1f2f6; color: #555; }
+  .btn-danger { background: #ff4d4f; color: #fff; }
+  .btn-sm { padding: 4px 10px; font-size: 13px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  input[type=text],input[type=password],input[type=number],textarea { border: 1px solid #ddd; border-radius: 6px;
+    padding: 8px 10px; width: 240px; }
+  textarea { width: 100%; min-height: 60px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 10px 8px; border-bottom: 1px solid #f0f0f0; text-align: left; font-size: 14px; }
+  th { color: #888; font-weight: 500; background: #fafafa; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(230px,1fr)); gap: 16px; }
+  .goods { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .goods img { width: 100%; height: 150px; object-fit: cover; }
+  .goods .body { padding: 12px; }
+  .goods .name { font-weight: 600; margin-bottom: 6px; }
+  .goods .price { color: #ff6f91; font-size: 18px; font-weight: 700; }
+  .goods .meta { color: #999; font-size: 12px; margin-top: 6px; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+  .tag-green { background: #e6fffb; color: #08979c; }
+  .tag-orange { background: #fff7e6; color: #d46b08; }
+  .tag-red { background: #fff1f0; color: #cf1322; }
+  .tag-gray { background: #f0f0f0; color: #666; }
+  .login-box { max-width: 380px; margin: 60px auto; }
+  .login-box .card { padding: 30px; }
+  .login-box h2 { margin-bottom: 18px; text-align: center; }
+  .login-box .row { margin-bottom: 14px; }
+  .login-box input { width: 100%; }
+  .msg { color: #666; font-size: 13px; margin-top: 10px; }
+  .msg.err { color: #cf1322; }
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #333;
+    color: #fff; padding: 10px 20px; border-radius: 6px; z-index: 999; font-size: 14px; display: none; }
+  .pager { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
+  .empty { text-align: center; color: #999; padding: 40px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🌷 鲜花商城 · 用户端</h1>
+  <div class="user" id="userBar"></div>
+</header>
+<nav id="navBar">
+  <button class="active" data-tab="shop">逛花市</button>
+  <button data-tab="cart">购物车</button>
+  <button data-tab="orders">我的订单</button>
+  <button data-tab="wallet">钱包</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<!-- 未登录 -->
+<div class="login-box hide" id="loginView">
+  <div class="card">
+    <h2>用户登录</h2>
+    <div class="row"><input id="lgUser" placeholder="用户名" type="text"></div>
+    <div class="row"><input id="lgPwd" placeholder="密码" type="password"></div>
+    <div class="row"><button class="btn btn-primary" style="width:100%" onclick="login()">登 录</button></div>
+    <div class="row"><button class="btn btn-ghost" style="width:100%" onclick="showReg()">注册新账号</button></div>
+    <p class="msg">演示账号 user01 / user123</p>
+  </div>
+</div>
+<div class="login-box hide" id="regView">
+  <div class="card">
+    <h2>用户注册</h2>
+    <div class="row"><input id="rgUser" placeholder="用户名(3~20位字母数字下划线)" type="text"></div>
+    <div class="row"><input id="rgPwd" placeholder="密码(≥8位含字母和数字)" type="password"></div>
+    <div class="row"><input id="rgPhone" placeholder="手机号(选填)" type="text"></div>
+    <div class="row"><button class="btn btn-primary" style="width:100%" onclick="doReg()">注 册</button></div>
+    <div class="row"><button class="btn btn-ghost" style="width:100%" onclick="showLogin()">返回登录</button></div>
+    <p class="msg err" id="regMsg"></p>
+  </div>
+</div>
+
+<!-- 已登录主界面 -->
+<div id="mainView" class="hide">
+  <!-- 商品浏览 -->
+  <section id="tab-shop">
+    <div class="card row">
+      <input id="kw" placeholder="搜索鲜花名称" type="text" onkeydown="if(event.key==='Enter')loadGoods()">
+      <button class="btn btn-primary" onclick="loadGoods()">搜索</button>
+      <span style="color:#999;font-size:13px" id="goodsCount"></span>
+    </div>
+    <div class="grid" id="goodsList"></div>
+    <div class="pager" id="goodsPager"></div>
+  </section>
+
+  <!-- 购物车 -->
+  <section id="tab-cart" class="hide">
+    <div class="card">
+      <h3 style="margin-bottom:12px">🛒 购物车</h3>
+      <table>
+        <thead><tr><th>商品</th><th>单价</th><th>数量</th><th>小计</th><th>库存</th><th>操作</th></tr></thead>
+        <tbody id="cartBody"></tbody>
+      </table>
+      <div class="row" style="justify-content:space-between;margin-top:14px">
+        <div>合计：<b style="color:#ff6f91;font-size:20px" id="cartTotal">0.00</b> 元</div>
+        <div class="row">
+          <button class="btn btn-ghost btn-sm" onclick="clearCart()">清空</button>
+          <button class="btn btn-primary" onclick="openCheckout()">去结算</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 下单 -->
+  <section id="tab-checkout" class="hide">
+    <div class="card">
+      <h3 style="margin-bottom:14px">📦 确认订单</h3>
+      <div class="row" style="margin-bottom:10px"><span style="width:90px">收货人</span><input id="coName" placeholder="姓名"></div>
+      <div class="row" style="margin-bottom:10px"><span style="width:90px">电话</span><input id="coPhone" placeholder="11位手机号"></div>
+      <div class="row" style="margin-bottom:10px"><span style="width:90px">地址</span><input id="coAddr" style="width:420px" placeholder="详细收货地址"></div>
+      <div class="row" style="margin-bottom:10px"><span style="width:90px">支付方式</span>
+        <select id="coPay"><option value="">到店/货到付款</option><option value="wallet">钱包支付（需二级密码）</option></select>
+      </div>
+      <div class="row hide" id="secondPwdRow" style="margin-bottom:10px"><span style="width:90px">二级密码</span><input id="coSecondPwd" type="password" placeholder="钱包支付需要输入二级密码"></div>
+      <div class="row" style="justify-content:space-between">
+        <span>应付：<b style="color:#ff6f91;font-size:18px" id="coTotal">0.00</b> 元</span>
+        <div class="row">
+          <button class="btn btn-ghost" onclick="backToCart()">返回购物车</button>
+          <button class="btn btn-primary" onclick="submitOrder()">提交订单</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 我的订单 -->
+  <section id="tab-orders" class="hide">
+    <div class="card">
+      <h3 style="margin-bottom:12px">📋 我的订单</h3>
+      <table>
+        <thead><tr><th>订单号</th><th>商品</th><th>金额</th><th>支付</th><th>状态</th><th>配送员</th><th>时间</th><th>操作</th></tr></thead>
+        <tbody id="orderBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 钱包 -->
+  <section id="tab-wallet" class="hide">
+    <div class="card row" style="justify-content:space-between">
+      <div><h3>💰 我的钱包</h3><p style="color:#999;font-size:13px;margin-top:6px">余额（元）</p>
+        <b style="font-size:30px;color:#ff6f91" id="wBalance">0.00</b></div>
+      <div class="row">
+        <input id="rechargeAmt" type="number" min="1" step="0.01" placeholder="充值金额">
+        <button class="btn btn-primary" onclick="recharge()">充值</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:10px">🔐 二级密码</h3>
+      <p style="color:#999;font-size:13px;margin-bottom:10px" id="secondPwdHint">尚未设置</p>
+      <div class="row">
+        <input id="spOld" type="password" placeholder="原二级密码（修改时填）">
+        <input id="spNew" type="password" placeholder="新二级密码（≥8位含字母数字）">
+        <button class="btn btn-primary" onclick="setSecondPwd()">设置/修改</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:12px">🧾 钱包流水</h3>
+      <table><thead><tr><th>类型</th><th>金额</th><th>余额</th><th>关联订单</th><th>时间</th></tr></thead>
+        <tbody id="txnBody"></tbody></table>
+    </div>
+  </section>
+</div>
+
+<script>
+const API = '../api/';               // 与后端同域部署的相对路径；若前后端分离，改为完整 https 地址
+let TOKEN = localStorage.getItem('fk_token') || '';
+let ME = null;
+
+function api(path, data = {}) {
+  const body = new URLSearchParams(data);
+  const headers = {};
+  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  return fetch(API + path, { method: 'POST', headers, body }).then(r => r.json());
+}
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._timer); t._timer = setTimeout(() => t.style.display = 'none', 2200);
+}
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function showLogin() { document.getElementById('loginView').classList.remove('hide'); document.getElementById('regView').classList.add('hide'); }
+function showReg() { document.getElementById('loginView').classList.add('hide'); document.getElementById('regView').classList.remove('hide'); }
+async function login() {
+  const r = await api('login.php', { username: document.getElementById('lgUser').value, password: document.getElementById('lgPwd').value });
+  if (r.code === 1) { TOKEN = r.token; localStorage.setItem('fk_token', TOKEN); ME = r.user; enterApp(); }
+  else toast(r.msg);
+}
+async function doReg() {
+  const r = await api('register.php', { username: document.getElementById('rgUser').value,
+    password: document.getElementById('rgPwd').value, phone: document.getElementById('rgPhone').value });
+  if (r.code === 1) { toast('注册成功，请登录'); showLogin(); }
+  else document.getElementById('regMsg').textContent = r.msg;
+}
+function logout() {
+  api('logout.php').then(() => {});
+  localStorage.removeItem('fk_token'); TOKEN = ''; ME = null;
+  document.getElementById('mainView').classList.add('hide');
+  document.getElementById('loginView').classList.remove('hide');
+  document.getElementById('userBar').textContent = '';
+}
+async function enterApp() {
+  document.getElementById('loginView').classList.add('hide');
+  document.getElementById('regView').classList.add('hide');
+  document.getElementById('mainView').classList.remove('hide');
+  document.getElementById('userBar').innerHTML = '👤 ' + esc(ME.username) + ' <button class="btn btn-sm" style="margin-left:10px;background:rgba(255,255,255,.25)" onclick="logout()">退出</button>';
+  switchTab('shop'); loadGoods();
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('#navBar button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  ['shop','cart','orders','wallet','checkout'].forEach(t => document.getElementById('tab-' + t).classList.toggle('hide', t !== tab));
+  if (tab === 'cart') loadCart();
+  if (tab === 'orders') loadOrders();
+  if (tab === 'wallet') loadWallet();
+}
+
+// ---- 商品 ----
+let goodsPage = 1;
+async function loadGoods() {
+  const r = await api('get_products.php', { page: goodsPage, size: 8, keyword: document.getElementById('kw').value });
+  if (r.code !== 1) return toast(r.msg);
+  document.getElementById('goodsCount').textContent = '共 ' + r.total + ' 件商品';
+  const box = document.getElementById('goodsList');
+  box.innerHTML = r.list.length ? r.list.map(g => `
+    <div class="goods">
+      <img src="${esc(g.img) || 'https://via.placeholder.com/400x150?text=Flower'}" alt="${esc(g.name)}" onerror="this.src='https://via.placeholder.com/400x150?text=Flower'">
+      <div class="body">
+        <div class="name">${esc(g.name)}</div>
+        <div class="price">¥${g.price}</div>
+        <div class="meta">${esc(g.merchant_name)} · 库存 ${g.stock}</div>
+        <button class="btn btn-primary btn-sm" style="margin-top:8px;width:100%" onclick="addCart(${g.id})">加入购物车</button>
+      </div>
+    </div>`).join('') : '<div class="empty" style="grid-column:1/-1">暂无商品</div>';
+  const pg = document.getElementById('goodsPager');
+  pg.innerHTML = r.total_page > 1 ? `<button class="btn btn-ghost btn-sm" onclick="goodsPage--;loadGoods()">上一页</button>
+    <span>${r.page}/${r.total_page}</span>
+    <button class="btn btn-ghost btn-sm" onclick="goodsPage++;loadGoods()">下一页</button>` : '';
+}
+async function addCart(pid) {
+  const r = await api('add_cart.php', { product_id: pid });
+  toast(r.msg);
+}
+
+// ---- 购物车 ----
+async function loadCart() {
+  const r = await api('get_cart.php');
+  if (r.code !== 1) return toast(r.msg);
+  document.getElementById('cartBody').innerHTML = r.list.length ? r.list.map(c => `
+    <tr>
+      <td>${esc(c.name)}${c.product_status !== 1 ? ' <span class="tag tag-red">已下架</span>' : ''}</td>
+      <td>¥${c.price}</td>
+      <td><input type="number" min="1" value="${c.num}" style="width:60px" onchange="updCart(${c.id},this.value)"></td>
+      <td>¥${(c.price * c.num).toFixed(2)}</td>
+      <td>${c.stock}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="delCart(${c.id})">删除</button></td>
+    </tr>`).join('') : '<tr><td colspan="6" class="empty">购物车是空的，去逛花市吧～</td></tr>';
+  document.getElementById('cartTotal').textContent = r.total.toFixed(2);
+}
+async function updCart(cid, num) {
+  const r = await api('update_cart.php', { cart_id: cid, num: parseInt(num, 10) });
+  if (r.code === 1) loadCart(); else toast(r.msg);
+}
+async function delCart(cid) { await api('delete_cart.php', { cart_id: cid }); loadCart(); }
+async function clearCart() { await api('clear_cart.php'); loadCart(); }
+
+// ---- 结算 ----
+let checkoutTotal = 0;
+function openCheckout() {
+  api('get_cart.php').then(r => {
+    if (!r.list.length) return toast('购物车为空');
+    checkoutTotal = r.total;
+    document.getElementById('coTotal').textContent = r.total.toFixed(2);
+    switchTab('checkout');
+  });
+}
+function backToCart() { switchTab('cart'); }
+document.getElementById('coPay').addEventListener('change', e => {
+  document.getElementById('secondPwdRow').classList.toggle('hide', e.target.value !== 'wallet');
+});
+async function submitOrder() {
+  const data = { rece_name: document.getElementById('coName').value,
+    rece_phone: document.getElementById('coPhone').value,
+    rece_addr: document.getElementById('coAddr').value,
+    pay_type: document.getElementById('coPay').value,
+    second_password: document.getElementById('coSecondPwd').value };
+  const r = await api('submit_order.php', data);
+  if (r.code === 1) {
+    toast('下单成功，订单号 ' + r.order_no);
+    ['coName','coPhone','coAddr','coSecondPwd'].forEach(i => document.getElementById(i).value = '');
+    switchTab('orders');
+  } else toast(r.msg);
+}
+
+// ---- 订单 ----
+async function loadOrders() {
+  const r = await api('get_user_orders.php', { page: 1, size: 20 });
+  if (r.code !== 1) return toast(r.msg);
+  document.getElementById('orderBody').innerHTML = r.list.length ? r.list.map(o => {
+    const stTag = { '待发货':'tag-orange', '已发货':'tag-orange', '配送中':'tag-green', '已送达':'tag-green', '已取消':'tag-gray' }[o.status] || 'tag-gray';
+    return `<tr>
+      <td>${esc(o.order_no)}</td><td>${esc(o.goods_text)}</td><td>¥${o.total_price}</td>
+      <td>${o.pay_status === '已支付' ? '<span class="tag tag-green">已支付</span>' : '<span class="tag tag-red">未支付</span>'}</td>
+      <td><span class="tag ${stTag}">${o.status}</span></td>
+      <td>${esc(o.courier_name || '—')}</td><td style="font-size:12px;color:#999">${esc(o.created_at)}</td>
+      <td>${o.status === '待发货' ? `<button class="btn btn-primary btn-sm" onclick="payOrder(${o.id})">${o.pay_status === '未支付' ? '去支付' : '钱包支付'}</button> <button class="btn btn-ghost btn-sm" onclick="cancelOrder(${o.id})">取消</button>` : ''}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="8" class="empty">暂无订单</td></tr>';
+}
+async function cancelOrder(oid) {
+  const r = await api('cancel_order.php', { order_id: oid });
+  toast(r.msg); loadOrders();
+}
+async function payOrder(oid) {
+  const pwd = prompt('请输入二级密码进行钱包支付：');
+  if (pwd === null) return;
+  const r = await api('wallet_pay.php', { order_id: oid, second_password: pwd });
+  toast(r.msg); loadOrders();
+}
+
+// ---- 钱包 ----
+async function loadWallet() {
+  const r = await api('wallet_info.php');
+  if (r.code !== 1) return toast(r.msg);
+  document.getElementById('wBalance').textContent = r.balance.toFixed(2);
+  document.getElementById('secondPwdHint').textContent = r.has_second_password ? '已设置 ✓（错误5次锁定15分钟）' : '尚未设置，建议设置以保护钱包支付';
+  document.getElementById('txnBody').innerHTML = r.transactions.length ? r.transactions.map(t => `
+    <tr><td>${esc(t.type)}</td><td style="color:${t.amount > 0 ? '#08979c' : '#cf1322'}">${t.amount > 0 ? '+' : ''}${t.amount}</td>
+    <td>${t.balance_after}</td><td>${esc(t.order_id || '—')}</td><td style="font-size:12px;color:#999">${esc(t.created_at)}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="empty">暂无流水</td></tr>';
+}
+async function recharge() {
+  const amt = document.getElementById('rechargeAmt').value;
+  if (!amt || parseFloat(amt) <= 0) return toast('请输入有效金额');
+  const r = await api('wallet_recharge.php', { amount: amt });
+  if (r.code === 1) { toast('充值成功'); document.getElementById('rechargeAmt').value = ''; loadWallet(); }
+  else toast(r.msg);
+}
+async function setSecondPwd() {
+  const r = await api('set_second_password.php', {
+    second_password: document.getElementById('spNew').value,
+    old_second_password: document.getElementById('spOld').value });
+  if (r.code === 1) { toast('设置成功'); loadWallet(); } else toast(r.msg);
+}
+
+// 初始化
+showLogin();
+</script>
+
+<!-- 导航栏点击绑定（修复：navBar 按钮原本没有绑定 switchTab） -->
+<script>
+(function () {
+  function bind() {
+    document.querySelectorAll('#navBar button').forEach(function (b) {
+      if (b.dataset.bound) return;
+      b.dataset.bound = '1';
+      b.addEventListener('click', function () { if (window.switchTab) switchTab(b.dataset.tab); });
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+</script>
+</body>
+</html>
